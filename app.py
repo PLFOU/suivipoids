@@ -19,7 +19,7 @@ if not st.session_state["authenticated"]:
     if password == PASSWORD:
         st.session_state["authenticated"] = True
         st.success("Accès autorisé")
-        st.experimental_rerun()
+        st.stop()
     elif password:
         st.error("Mot de passe incorrect")
     st.stop()
@@ -60,7 +60,8 @@ def get_mesures():
 init_db()
 
 # --- Formulaire d’entrée ---
-st.title("Suivi poids & mensurations")
+st.title("📊 Suivi poids & mensurations")
+
 with st.form("ajout_mesure"):
     date = st.date_input("Date", datetime.today())
     poids = st.number_input("Poids (kg)", 30.0, 100.0, step=0.1)
@@ -70,19 +71,20 @@ with st.form("ajout_mesure"):
         insert_mesure(date, poids, ventre, poitrine)
         st.success("Mesure ajoutée avec succès ✅")
 
-# --- Affichage des graphiques ---
+# --- Affichage des données et graphiques ---
 df = get_mesures()
+
 if not df.empty:
-    st.subheader("📈 Évolution")
+    st.subheader("📈 Évolution quotidienne")
     for col in ["poids", "ventre", "poitrine"]:
         st.line_chart(df.set_index("date")[col])
 
-    st.subheader("📊 Moyenne hebdo")
+    st.subheader("📅 Moyenne hebdomadaire")
     df["week"] = df["date"].dt.to_period("W").apply(lambda r: r.start_time)
     weekly_mean = df.groupby("week")[["poids", "ventre", "poitrine"]].mean()
     st.line_chart(weekly_mean)
 
-    st.subheader("📉 Moyenne glissante (7 jours)")
+    st.subheader("🔁 Moyenne glissante (7 jours)")
     df_rolling = df.set_index("date").rolling("7D").mean()
     st.line_chart(df_rolling[["poids", "ventre", "poitrine"]])
 
@@ -99,3 +101,5 @@ if not df.empty:
     pred_df = pd.DataFrame({"date": future_dates, "poids_prevu": y_pred})
     chart_df = pd.concat([df[["date", "poids"]].rename(columns={"poids": "poids_prevu"}), pred_df])
     st.line_chart(chart_df.set_index("date"))
+else:
+    st.info("Aucune donnée disponible. Ajoute tes premières mesures pour démarrer.")
